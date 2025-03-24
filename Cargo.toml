@@ -1,0 +1,10 @@
+[package]
+name = "minigrep"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.97"
+termcolor = "1.4.1"
+lexopt = "0.3.0"
+log = "0.4.26"
