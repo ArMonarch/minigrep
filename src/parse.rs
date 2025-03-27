@@ -111,7 +111,7 @@ impl Parser {
                     p.value()
                         .with_context(|| format!("missing value for flag -{:?}", mat.name))?,
                 )
-                .with_context(|| format!(""))?
+                .with_context(|| format!("for flag : -{:?} | --{:?}", mat.name, mat.name))?
             };
 
             mat.flag

@@ -1,23 +1,83 @@
+use anyhow::Context;
+
+#[derive(Debug, Clone, Copy)]
+pub enum Mode {
+    Search(Searchmode),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Searchmode {
+    Standard,
+}
+
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Args {
     // Essential Arguments
     pub special: Option<SpecialMode>,
-    pub _mode: bool,
+    pub mode: Mode,
     pub positional: Vec<String>,
-    pub _pattern: String,
-    pub file: File,
+    pub pattern: String,
+    pub file: File<String>,
 
     // Everything Else
-    pub patterns: Patterns,
+    pub patterns: Patterns<String>,
+}
+
+impl Args {
+    /// Returns true if some non-zero number of matches is believed to be
+    /// possible.
+    pub fn matches_possible(&self) -> bool {
+        if self.positional.is_empty()
+            && self.pattern.is_empty()
+            && self.patterns.patterns.is_empty()
+        {
+            return false;
+        }
+
+        true
+    }
+
+    // Returns possible Pattern that is to be searched
+    pub fn get_patterns(&mut self) -> anyhow::Result<Vec<String>> {
+        if !self.patterns.is_empty() {
+            return Ok(self.patterns.patterns.clone());
+        }
+
+        if !self.pattern.is_empty() {
+            return Ok(vec![self.pattern.clone()]);
+        }
+
+        let pattern = vec![
+            self.positional
+                .pop()
+                .context("pattern to search not found")?,
+        ];
+
+        Ok(pattern)
+    }
+
+    pub fn get_file(&mut self) -> anyhow::Result<String> {
+        if !self.file.name.is_empty() {
+            return Ok(self.file.name.clone());
+        }
+
+        let file = self
+            .positional
+            .pop()
+            .context("file to be searched for pattern not provided")?;
+
+        Ok(file)
+    }
 }
 
 impl Default for Args {
     fn default() -> Self {
         Args {
             special: None,
-            _mode: false,
+            mode: Mode::Search(Searchmode::Standard),
             positional: Vec::new(),
-            _pattern: String::new(),
+            pattern: String::new(),
             patterns: Patterns::new(),
             file: File::new(String::new()),
         }
@@ -40,31 +100,48 @@ pub enum SpecialMode {
 }
 
 #[derive(Debug)]
-pub struct Patterns {
-    _patterns: Vec<String>,
+pub struct Patterns<T> {
+    pub patterns: Vec<T>,
 }
 
-impl Patterns {
-    pub fn new() -> Self {
+impl<T> Patterns<T> {
+    pub fn new() -> Patterns<T> {
         Patterns {
-            _patterns: Vec::new(),
+            patterns: Vec::new(),
         }
     }
 
-    pub fn from(patterns: Vec<String>) -> Patterns {
+    pub fn is_empty(&self) -> bool {
+        self.patterns.is_empty()
+    }
+}
+
+impl<T> From<String> for Patterns<T>
+where
+    T: From<String>,
+{
+    fn from(value: String) -> Patterns<T> {
         Patterns {
-            _patterns: patterns,
+            patterns: vec![T::from(value)],
         }
     }
 }
 
 #[derive(Debug)]
-pub struct File {
-    pub _name: String,
+pub struct File<T> {
+    pub name: T,
 }
 
-impl File {
-    pub fn new(name: String) -> Self {
-        File { _name: name }
+impl<T> File<T> {
+    pub fn new(name: T) -> Self {
+        File { name }
+    }
+}
+
+impl<T: Clone> Clone for File<T> {
+    fn clone(&self) -> File<T> {
+        File {
+            name: self.name.clone(),
+        }
     }
 }

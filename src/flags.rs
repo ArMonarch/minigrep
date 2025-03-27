@@ -28,25 +28,6 @@ where
     }
 }
 
-impl<I, O> TryFrom<OsString> for FlagName<I, O>
-where
-    O: From<String>,
-{
-    type Error = anyhow::Error;
-
-    fn try_from(value: OsString) -> Result<FlagName<I, O>, Self::Error> {
-        let str = match value.into_string() {
-            Ok(str) => str,
-            Err(os_str) => anyhow::bail!(
-                "failed convertion form OsString to String for value: {:?}",
-                os_str
-            ),
-        };
-
-        Ok(FlagName::<I, O>::String(O::from(str)))
-    }
-}
-
 /// The kind of flag that is being matched.
 #[derive(Debug)]
 pub enum FlagInfoKind {
@@ -195,7 +176,7 @@ pub trait Flag: Debug + Send + Sync + 'static {
 
     fn name_long(&self) -> &'static str;
 
-    fn _doc_short(&self) -> &'static str;
+    fn doc_short(&self) -> &'static str;
 
     fn _doc_long(&self) -> &'static str;
 
@@ -222,7 +203,7 @@ impl Flag for Patterns {
         "pattern"
     }
 
-    fn _doc_short(&self) -> &'static str {
+    fn doc_short(&self) -> &'static str {
         r"Search for given patterns"
     }
 
@@ -231,23 +212,9 @@ impl Flag for Patterns {
     }
 
     fn update(&self, value: FlagValue<bool, String>, args: &mut args::Args) -> anyhow::Result<()> {
-        // let patterns = match value.unwrap_value().into_string() {
-        //     Ok(str) => str,
-        //     Err(_) => match self.name_short() {
-        //         Some(byte) => anyhow::bail!(
-        //             "failed convertion from OsString to String for flag -{} | --{}",
-        //             char::from(byte),
-        //             self.name_long().to_string()
-        //         ),
-        //         None => anyhow::bail!(
-        //             "failed convertion from OsString to String for flag --{}",
-        //             self.name_long().to_string()
-        //         ),
-        //     },
-        // };
         let patterns = value.unwrap_value();
 
-        args.patterns = args::Patterns::from(vec![patterns]);
+        args.patterns = args::Patterns::from(patterns);
         Ok(())
     }
 }
@@ -269,8 +236,8 @@ impl Flag for File {
         "file"
     }
 
-    fn _doc_short(&self) -> &'static str {
-        r"Search for given given file for patterns"
+    fn doc_short(&self) -> &'static str {
+        r"Search for the given file for patterns"
     }
 
     fn _doc_long(&self) -> &'static str {
@@ -294,10 +261,8 @@ pub fn parse() -> ParseResult<args::Args> {
         return ParseResult::Err(err);
     };
 
-    eprintln!("{:?}", &args);
-
-    // if a special mode was enabled. This is basically only for version and
-    // help output.
+    // we can bail early if a special mode was enabled.
+    // This is basically only for version and help output
     if let Some(special_mode) = args.special {
         return ParseResult::Special(special_mode);
     }
